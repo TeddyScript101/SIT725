@@ -1,17 +1,18 @@
 const express = require('express');
+const path = require('path');
+
 const app = express();
 const port = 3000;
 
-
 app.use(express.json());
 
+app.use(express.static(path.join(__dirname, 'public')));
 
 const validateNumbers = (num1, num2) => {
     num1 = parseFloat(num1);
     num2 = parseFloat(num2);
     return !isNaN(num1) && !isNaN(num2);
 };
-
 
 app.get('/add', (req, res) => {
     const { num1, num2 } = req.query;
@@ -20,7 +21,6 @@ app.get('/add', (req, res) => {
     }
     res.json({ result: parseFloat(num1) + parseFloat(num2) });
 });
-
 
 app.post('/calculate', (req, res) => {
     const { operation, num1, num2 } = req.body;
@@ -54,7 +54,6 @@ app.post('/calculate', (req, res) => {
 
     res.json({ result });
 });
-
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
