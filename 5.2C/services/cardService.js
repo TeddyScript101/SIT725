@@ -1,4 +1,4 @@
-const Card = require('../models/card');
+const { Card } = require('../models');
 
 const cardService = {
     getAllCards: async () => {
@@ -10,4 +10,6 @@ const cardService = {
     }
 };
 
-module.exports = cardService;
+
+module.exports = cardService
+
