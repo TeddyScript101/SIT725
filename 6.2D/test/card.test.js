@@ -1,40 +1,85 @@
-var expect = require("chai").expect;
-var request = require("request");
+const request = require('supertest');
+const { expect } = require('chai');
+const app = require('../server'); // adjust path to your Express app
+const mongoose = require('mongoose');
+const { Card } = require('../models');
+const { MongoMemoryServer } = require('mongodb-memory-server');
+
+const tempCard = {
+    title: "Test Card",
+    description: "Demo description",
+    image: "photo",
+    link: "About Cat 3"
+};
 
 
-describe("GET Cards API", function () {
-    var url = "http://localhost:3000/cards";
+describe('GET /cards API', function () {
+    it('should return status 200', async function () {
+        const res = await request(app).get('/cards');
+        expect(res.status).to.equal(200);
+    });
 
-    it("should return status 200", function (done) {
-        request(url, function (error, response, body) {
-            if (error) {
-                console.error("Request error:", error);
-                return done(error); // fails the test if there's a network/server error
-            }
+    it('the return array should not be empty', async function () {
+        const res = await request(app).get('/cards');
+        expect(res.body.data).to.be.an('array');
+        expect(res.body.data.length).to.be.greaterThan(0);
+    });
 
-            try {
-                expect(response.statusCode).to.equal(200);
-                done();
-            } catch (err) {
-                done(err); // fails test with proper assertion error
-            }
-        });
+    it('each card should have the correct shape', async function () {
+        const res = await request(app).get('/cards');
+        const card = res.body.data[0];
+        expect(card).to.include.all.keys('title', 'image', 'link', 'description');
     });
 });
 
-// describe('GET Cards API', () => {
 
-//     it('should GET all cards', (done) => {
-//         request()
-//             .get('/cards')
-//             .end((err, res) => {
-//                 expect(res).to.have.status(200);
-//                 expect(res.body).to.be.an('array');
-//                 expect(res.body[0]).to.have.property('title');
-//                 expect(res.body[0]).to.have.property('image');
-//                 expect(res.body[0]).to.have.property('link');
-//                 expect(res.body[0]).to.have.property('description');
-//                 done();
-//             });
-//     });
-// });
+
+describe('POST /card API (in-memory DB)', function () {
+    let mongoServer;
+
+    before(async () => {
+        mongoServer = await MongoMemoryServer.create();
+        const uri = mongoServer.getUri();
+
+        await mongoose.disconnect();
+        await mongoose.connect(uri);
+    });
+
+    after(async () => {
+        await mongoose.disconnect();
+        await mongoServer.stop();
+    });
+
+    it('should create a card in memory and not affect real DB', async () => {
+        const res = await request(app)
+            .post('/cards')
+            .send(tempCard);
+
+        expect(res.status).to.equal(201);
+        expect(res.body.data.title).to.equal(tempCard.title);
+        expect(res.body.data.description).to.equal(tempCard.description);
+        expect(res.body.data.image).to.equal(tempCard.image);
+        expect(res.body.data.link).to.equal(tempCard.link);
+        expect(res.body.data._id).to.exist;
+    });
+    it('The Temp card is not persist in the real DB', async () => {
+        const card = await Card.findOne({ title: tempCard.title });
+        expect(card).to.not.be.null;
+    });
+
+    it('should return 400 if any required field is missing', async () => {
+        const incompleteCard = {
+            description: "Missing title field",
+            image: "someimage.png",
+            link: "MissingTitleLink"
+        };
+
+        const res = await request(app)
+            .post('/cards')
+            .send(incompleteCard);
+
+        expect(res.status).to.equal(400);
+        expect(res.body).to.have.property('error');
+    });
+
+});

@@ -4,10 +4,7 @@ require('dotenv').config();
 
 const connectDB = async () => {
     try {
-        await mongoose.connect(process.env.MONGO_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
+        await mongoose.connect(process.env.MONGO_URI);
         insertDummyData()
         console.log('✅ MongoDB Connected...');
     } catch (error) {
@@ -48,7 +45,6 @@ const insertDummyData = async () => {
             );
         }
 
-        console.log('✅ Dummy data upserted');
     } catch (error) {
         console.error('❌ MongoDB Upsert Error:', error);
         process.exit(1);
